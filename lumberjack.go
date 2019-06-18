@@ -22,9 +22,9 @@
 package lumberjack
 
 import (
-	"compress/gzip"
 	"errors"
 	"fmt"
+	"github.com/ulikunitz/xz"
 	"io"
 	"io/ioutil"
 	"os"
@@ -37,7 +37,7 @@ import (
 
 const (
 	backupTimeFormat = "2006-01-02T15-04-05.000"
-	compressSuffix   = ".gz"
+	compressSuffix   = ".xz"
 	defaultMaxSize   = 100
 )
 
@@ -483,13 +483,13 @@ func compressLogFile(src, dst string) (err error) {
 
 	// If this file already exists, we presume it was created by
 	// a previous attempt to compress the log file.
-	gzf, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, fi.Mode())
+	gxz, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, fi.Mode())
 	if err != nil {
 		return fmt.Errorf("failed to open compressed log file: %v", err)
 	}
-	defer gzf.Close()
+	defer gxz.Close()
 
-	gz := gzip.NewWriter(gzf)
+	xz, err := xz.NewWriter(gxz)
 
 	defer func() {
 		if err != nil {
@@ -498,13 +498,13 @@ func compressLogFile(src, dst string) (err error) {
 		}
 	}()
 
-	if _, err := io.Copy(gz, f); err != nil {
+	if _, err := io.Copy(xz, f); err != nil {
 		return err
 	}
-	if err := gz.Close(); err != nil {
+	if err := xz.Close(); err != nil {
 		return err
 	}
-	if err := gzf.Close(); err != nil {
+	if err := gxz.Close(); err != nil {
 		return err
 	}
 
